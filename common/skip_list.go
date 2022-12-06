@@ -7,6 +7,7 @@ import (
 
 type SkipList struct {
 	header *Element
+	arena  *arena
 	mutex  sync.RWMutex
 	update []*Element
 	max    int
@@ -21,8 +22,8 @@ type SkipListImpl interface {
 }
 
 func NewSkipList(skip ...int) SkipListImpl {
-	list := &SkipList{header: NewElement(nil, 32)}
-	list.max = 32
+	list := &SkipList{header: NewElement(nil, MaxLevel)}
+	list.max = MaxLevel
 	list.skip = 4
 	list.level = 0
 	list.length = 0

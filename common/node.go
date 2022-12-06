@@ -5,30 +5,39 @@ import (
 	"sort"
 )
 
+type nodeArena struct {
+	keyOffset   uint32
+	keySize     uint32
+	valueOffset uint32
+	valueSize   uint32
+}
+
+func (n *nodeArena) setKey(offset uint32, size uint32) {
+	n.keyOffset = offset
+	n.keySize = size
+}
+
+func (n *nodeArena) setVal(offset uint32, size uint32) {
+	n.valueOffset = offset
+	n.valueSize = size
+}
+
 type node struct {
 	key   []byte
 	score float64
 	data  interface{}
-}
-
-func calcScore(key []byte) float64 {
-	var hash uint64
-	l := len(key)
-	if l > 8 {
-		l = 8
-	}
-	for i := 0; i < l; i++ {
-		shift := uint(64 - 8*(i+1))
-		hash |= uint64(key[i]) << shift
-	}
-	return float64(hash)
+	nodeArena
 }
 
 func NewNode(key []byte) *node {
 	return &node{
 		key:   key,
-		score: calcScore(key),
+		score: Hash().simpleFnv(key),
 	}
+}
+
+func (n *node) ToUse(a *arena) {
+
 }
 
 func (n *node) SetData(value interface{}) *node {
