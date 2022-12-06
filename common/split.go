@@ -1,59 +1,39 @@
 package common
 
-const batch = 1
-
 type splitter[T any] struct {
 	total int
 	step  int
 	cur   int
-	final bool
 	Data  []T
 }
 
 type SplitterImpl[T any] interface {
-	Get() []T
-	HasNext() (ok bool)
-	Next()
+	Get() ([]T, bool)
 }
 
+// NewSplitter 获取一个支持并发操作的分片器
 func NewSplitter[T any](data []T) SplitterImpl[T] {
-	step := len(data) / batch
+	step := 1
 	return &splitter[T]{total: len(data), step: step, cur: 0, Data: data}
 }
 
-func (i *splitter[T]) Get() []T {
-	if i.final {
-		re := i.Data[i.cur:]
+// Get 获取下一个分片
+func (i *splitter[T]) Get() (ret []T, ok bool) {
+	// 判断还有没有可以分批的数据
+	if i.cur >= i.total {
+		return nil, false
+	}
+
+	// 如果是最后一次分批，那么直接返回剩余的数据
+	if i.cur+i.step >= i.total {
+		ret = i.Data[i.cur:]
 		i.cur = i.total
-		return re
-	} else {
-		return i.Data[i.Start():i.End()]
+		return ret, true
 	}
-}
 
-func (i *splitter[T]) HasNext() (ok bool) {
-	return i.cur < i.total
-}
-
-func (i *splitter[T]) Start() int {
-	return i.cur
-}
-
-func (i *splitter[T]) End() int {
-	end := i.cur + i.step
-	if end > i.total {
-		end = i.total
-	}
-	return end
-}
-
-func (i *splitter[T]) Next() {
-	if !i.HasNext() {
-		return
-	}
-	if i.cur+i.step > i.total {
-		i.final = true
-		return
-	}
+	// 如果不是最后一次分批，那么返回当前分批的数据，同时更新当前分批的起始位置
+	ret = i.Data[i.cur : i.cur+i.step]
 	i.cur += i.step
+	i.step += 100
+	return ret, true
 }

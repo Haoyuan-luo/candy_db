@@ -20,6 +20,42 @@ func ForEach[T, R any](iter Iterator[T], fn func(T) R) Iterator[R] {
 	return Iterator[R]{iter.done, Processor[T, R](iter.done, iter.stream, fn)}
 }
 
+func Serial[T, R any](s []T, fn func(T) R) (ret []R) {
+	ret = make([]R, len(s))
+	sp := NewSplitter(s)
+	for {
+		got, ok := sp.Get()
+		if !ok {
+			break
+		}
+		copy(ret, ForEach(FromSlice(got), fn).GetStream())
+	}
+	return ret
+}
+
+func Parallel[T, R any](s []T, fn func(T) R) (ret []R) {
+	ret = make([]R, len(s))
+	wg := &sync.WaitGroup{}
+	sp := NewSplitter(s)
+	for {
+		got, ok := sp.Get()
+		if !ok {
+			break
+		}
+		wg.Add(1)
+		go func() {
+			copy(ret, ForEach(FromSlice(got), fn).GetStream())
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	return ret
+}
+
+func Map[T, R any](s []T, fn func(T) R) []R {
+	return Parallel(s, fn)
+}
+
 func Filter[T any](s []T, f func(T) bool) []T {
 	var r []T
 	filter := func(t T) struct{} {
@@ -28,26 +64,6 @@ func Filter[T any](s []T, f func(T) bool) []T {
 		}
 		return struct{}{}
 	}
-	ForEach(FromSlice(s), filter).GetStream()
-	return r
-}
-
-func FilterV2[T any](s []T, f func(T) bool) []T {
-	wg := sync.WaitGroup{}
-	r := make([]T, 0, len(s))
-	filter := func(t T) struct{} {
-		if f(t) {
-			r = append(r, t)
-		}
-		return struct{}{}
-	}
-	for sp := NewSplitter(s); sp.HasNext(); sp.Next() {
-		wg.Add(1)
-		go func() {
-			ForEach(FromSlice(sp.Get()), filter)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
+	Serial(s, filter)
 	return r
 }
