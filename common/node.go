@@ -8,7 +8,7 @@ import (
 type node struct {
 	key   []byte
 	score float64
-	data  int64
+	data  interface{}
 }
 
 func calcScore(key []byte) float64 {
@@ -24,12 +24,16 @@ func calcScore(key []byte) float64 {
 	return float64(hash)
 }
 
-func NewNode(data int64, key []byte) *node {
+func NewNode(key []byte) *node {
 	return &node{
 		key:   key,
 		score: calcScore(key),
-		data:  data,
 	}
+}
+
+func (n *node) SetData(value interface{}) *node {
+	n.data = value
+	return n
 }
 
 type compareType int
