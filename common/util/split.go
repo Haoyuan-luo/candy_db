@@ -1,4 +1,4 @@
-package common
+package util
 
 type splitter[T any] struct {
 	total int

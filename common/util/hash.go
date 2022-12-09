@@ -1,4 +1,4 @@
-package common
+package util
 
 const offset32 fnv = 2166136261
 const prime32 fnv = 16777619

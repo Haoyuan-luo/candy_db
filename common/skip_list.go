@@ -1,6 +1,7 @@
 package common
 
 import (
+	"candy_db/common/util"
 	"math/rand"
 	"sync"
 )
@@ -43,9 +44,10 @@ func (list *SkipList) AddNode(nodes ...*node) {
 func (list *SkipList) FindNode(key ...[]byte) []*node {
 	done := make(chan struct{})
 	defer close(done)
-	producer := Producer[[]byte](done, key)
-	processor := Processor[[]byte, *node](done, producer, list.find)
-	return Consumer[*node](done, processor)
+	producer := util.Producer[[]byte](done, key)
+	_ = util.Processor[[]byte, *node](done, producer, list.find, nil)
+	//return Consumer[*node](done, processor)
+	return nil
 }
 
 func (list *SkipList) find(key []byte) *node {

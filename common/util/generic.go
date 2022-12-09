@@ -1,4 +1,4 @@
-package common
+package util
 
 func GenZero[T any]() (r T) {
 	return

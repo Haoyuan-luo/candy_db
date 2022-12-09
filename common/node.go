@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"candy_db/common/util"
 	"sort"
 )
 
@@ -32,7 +33,7 @@ type node struct {
 func NewNode(key []byte) *node {
 	return &node{
 		key:   key,
-		score: Hash().simpleFnv(key),
+		score: util.Hash().simpleFnv(key),
 	}
 }
 

@@ -1,4 +1,4 @@
-package common
+package util
 
 import (
 	"testing"
@@ -30,13 +30,6 @@ func TestNewSplitter(t *testing.T) {
 		}
 	}
 }
-
-var testData = func() (re []int) {
-	for i := 0; i < 10000; i++ {
-		re = append(re, i)
-	}
-	return
-}()
 
 func BenchmarkSplitter(b *testing.B) {
 	for i := 0; i < b.N; i++ {

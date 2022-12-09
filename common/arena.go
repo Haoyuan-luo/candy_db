@@ -1,13 +1,14 @@
 package common
 
 import (
+	"candy_db/common/util"
 	"sync/atomic"
 )
 
 type arena struct {
 	buf []byte
 	pos uint32
-	log LogImpl
+	log util.LogImpl
 }
 
 type ArenaImpl interface {
@@ -20,12 +21,12 @@ func NewArena() ArenaImpl {
 	return &arena{
 		buf: make([]byte, 1),
 		pos: 1,
-		log: Logger().SetField("Arena"),
+		log: util.Logger().SetField("Arena"),
 	}
 }
 
 func (a arena) allocate(sz uint32) uint32 {
-	newPos := atomic.AddUint32(GenPtr(a.pos), sz)
+	newPos := atomic.AddUint32(util.GenPtr(a.pos), sz)
 	if len(a.buf)-int(newPos) < OneElementSize {
 		growBy := uint32(len(a.buf))
 		if growBy > 1<<30 {
@@ -35,8 +36,8 @@ func (a arena) allocate(sz uint32) uint32 {
 			growBy = sz
 		}
 		newBuf := make([]byte, len(a.buf)+int(growBy))
-		if !GenEqual(len(a.buf), copy(newBuf, a.buf)) {
-			a.log.Log(ERROR, "arena allocate failed")
+		if !util.GenEqual(len(a.buf), copy(newBuf, a.buf)) {
+			a.log.Log(util.ERROR, "arena allocate failed")
 		}
 		a.buf = newBuf
 	}
