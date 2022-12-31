@@ -18,12 +18,13 @@ type SkipList struct {
 }
 
 type SkipListImpl interface {
-	AddNode(nodes ...*node)
-	FindNode(key ...[]byte) []*node
+	AddNode(nodes ...*Container)
+	FindNode(container ...*Container)
 }
 
 func NewSkipList(skip ...int) SkipListImpl {
 	list := &SkipList{header: NewElement(nil, MaxLevel)}
+	list.arena = NewArena()
 	list.max = MaxLevel
 	list.skip = 4
 	list.level = 0
@@ -35,23 +36,27 @@ func NewSkipList(skip ...int) SkipListImpl {
 	return list
 }
 
-func (list *SkipList) AddNode(nodes ...*node) {
-	for i := range nodes {
-		list.add(nodes[i])
+func (list *SkipList) AddNode(container ...*Container) {
+	for i := range container {
+		list.add(newNode(list.arena).Dump(container[i]))
 	}
 }
 
-func (list *SkipList) FindNode(key ...[]byte) []*node {
+func (list *SkipList) FindNode(container ...*Container) {
 	done := make(chan struct{})
 	defer close(done)
-	producer := util.Producer[[]byte](done, key)
-	_ = util.Processor[[]byte, *node](done, producer, list.find, nil)
-	//return Consumer[*node](done, processor)
-	return nil
+	nodes := util.Map(container, list.find)
+
+	for i := 0; i < len(container); i++ {
+		if n := <-nodes; n != nil {
+			n.Replay(container[i])
+		}
+	}
+	return
 }
 
-func (list *SkipList) find(key []byte) *node {
-	tarNode := NewNode(key)
+func (list *SkipList) find(container *Container) *node {
+	tarNode := newNode(list.arena).identity(container.key)
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 

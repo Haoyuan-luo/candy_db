@@ -11,13 +11,7 @@ type arena struct {
 	log util.LogImpl
 }
 
-type ArenaImpl interface {
-	createSpace(level int) uint32
-	PutData(node node)
-	GetElement(pos, offset int) *Element
-}
-
-func NewArena() ArenaImpl {
+func NewArena() *arena {
 	return &arena{
 		buf: make([]byte, 1),
 		pos: 1,
@@ -25,9 +19,9 @@ func NewArena() ArenaImpl {
 	}
 }
 
-func (a arena) allocate(sz uint32) uint32 {
+func (a *arena) allocate(sz uint32) uint32 {
 	newPos := atomic.AddUint32(util.GenPtr(a.pos), sz)
-	if len(a.buf)-int(newPos) < OneElementSize {
+	if len(a.buf)-int(newPos) < OneNodeSize {
 		growBy := uint32(len(a.buf))
 		if growBy > 1<<30 {
 			growBy = 1 << 30
@@ -44,17 +38,19 @@ func (a arena) allocate(sz uint32) uint32 {
 	return newPos - sz
 }
 
-func (a arena) createSpace(level int) uint32 {
-	unusedSize := (MaxLevel - level) * OffSetSize
-	return a.allocate(uint32(OneElementSize - unusedSize))
+func (a *arena) CopyBy(fn func() []byte) (startPoint, size uint32) {
+	startPoint = a.pos
+	src := fn()
+	size = uint32(len(src))
+	offset := a.allocate(size)
+	if !util.GenEqual(len(src), copy(a.buf[offset:], src)) {
+		a.log.Log(util.ERROR, "arena copy failed")
+	}
+	offset += uint32(len(src))
+	a.pos = offset
+	return
 }
 
-func (a arena) PutData(node node) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a arena) GetElement(pos, offset int) *Element {
-	//TODO implement me
-	panic("implement me")
+func (a *arena) GetBy(offset, size uint32, fn func([]byte)) {
+	fn(a.buf[offset : offset+size])
 }

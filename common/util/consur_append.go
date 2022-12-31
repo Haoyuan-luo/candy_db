@@ -1,25 +1,29 @@
 package util
 
-type AppendService[T any] struct {
+type AppendService[T any] interface {
+	Get() []T
+	Close()
+	Ready() func(...T)
+}
+
+type appendImpl[T any] struct {
 	c    chan struct{}
 	ch   chan T // 用来 同步的channel
 	data []T    // 存储数据的slice
 }
 
-func (s *AppendService[T]) Schedule() {
-	// 从 channel 接收数据
+func (s *appendImpl[T]) schedule() {
 	for i := range s.ch {
 		s.data = append(s.data, i)
 	}
 }
 
-func (s *AppendService[T]) Close() {
-	// 最后关闭 channel
+func (s *appendImpl[T]) Close() {
 	close(s.ch)
 	<-s.c
 }
 
-func (s *AppendService[T]) Ready() func(...T) {
+func (s *appendImpl[T]) Ready() func(...T) {
 	return func(vs ...T) {
 		for _, v := range vs {
 			s.ch <- v
@@ -27,17 +31,20 @@ func (s *AppendService[T]) Ready() func(...T) {
 	}
 }
 
-func NewAppendService[T any](size int) *AppendService[T] {
+func (s *appendImpl[T]) Get() []T {
+	return s.data
+}
+
+func NewAppendImpl[T any](size int) AppendService[T] {
 	c := make(chan struct{})
-	s := &AppendService[T]{
+	s := &appendImpl[T]{
 		c:    c,
 		ch:   make(chan T, size),
 		data: make([]T, 0),
 	}
 	done := func() { c <- struct{}{} }
 	go func() {
-		// 并发地 append 数据到 slice
-		s.Schedule()
+		s.schedule()
 		done()
 	}()
 	return s

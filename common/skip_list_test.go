@@ -17,12 +17,21 @@ func TestNewSkipList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewSkipList()
 			for i := 0; i < 100000; i++ {
-				got.AddNode(NewNode([]byte(strconv.FormatInt(int64(i), 10))).SetData(i))
+				got.AddNode(Container{
+					key:   []byte(strconv.FormatInt(int64(i), 10)),
+					input: i,
+				})
 			}
-			ret := got.FindNode([]byte(strconv.FormatInt(int64(10000), 10)), []byte(strconv.FormatInt(int64(700), 10)), []byte(strconv.FormatInt(int64(300), 10)))
-			if ret == nil {
-				t.Errorf("TestNewSkipList() = %v, want %v", ret, 300)
+			one := &Container{
+				key: []byte(strconv.FormatInt(int64(10), 10)),
 			}
+			two := &Container{
+				key: []byte(strconv.FormatInt(int64(100), 10)),
+			}
+			three := &Container{
+				key: []byte(strconv.FormatInt(int64(1000), 10)),
+			}
+			got.FindNode(one, two, three)
 		})
 	}
 }

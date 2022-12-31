@@ -11,8 +11,8 @@ type timesFnv struct {
 }
 
 type HashImpl interface {
-	times(n uint32) timesFnv
-	simpleFnv(key []byte) float64
+	Times(n uint32) timesFnv
+	SimpleFnv(key []byte) float64
 }
 
 func Hash() HashImpl {
@@ -20,7 +20,7 @@ func Hash() HashImpl {
 	return &s
 }
 
-func (s *fnv) simpleFnv(key []byte) float64 {
+func (s *fnv) SimpleFnv(key []byte) float64 {
 	sampled := make([][]byte, 0, 3)
 	total := len(key) - 1
 	step := total / 5
@@ -35,14 +35,14 @@ func (s *fnv) simpleFnv(key []byte) float64 {
 	return float64(hash)
 }
 
-func (s *fnv) times(n uint32) timesFnv {
+func (s *fnv) Times(n uint32) timesFnv {
 	return timesFnv{*s, n}
 }
 
-func (s *timesFnv) simpleFnv(key []byte) []float64 {
+func (s *timesFnv) SimpleFnv(key []byte) []float64 {
 	hash := make([]float64, s.times)
 	for i := uint32(0); i < s.times; i++ {
-		hash[i] = s.fnv.simpleFnv(append(key, byte(i)))
+		hash[i] = s.fnv.SimpleFnv(append(key, byte(i)))
 	}
 	return hash
 }

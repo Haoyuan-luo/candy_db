@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 	"github.com/yudai/pp"
-	"sync"
 	"time"
 )
 
@@ -16,14 +15,12 @@ const (
 )
 
 type log struct {
-	wg    *sync.WaitGroup
 	field string
 	now   time.Time
 }
 
 func Logger() LogImpl {
 	return &log{
-		wg:    &sync.WaitGroup{},
 		field: "common",
 		now:   time.Now(),
 	}
@@ -32,15 +29,12 @@ func Logger() LogImpl {
 type LogImpl interface {
 	Log(level level, format string, args ...interface{}) LogImpl
 	SetField(field string) LogImpl
-	Cost()
+	Cost() LogImpl
+	ReSetTimer() LogImpl
 }
 
 func (l log) Log(level level, format string, args ...interface{}) LogImpl {
-	l.wg.Add(1)
-	go func() {
-		_, _ = pp.Printf(fmt.Sprintf("[%s] %s: %s \n", l.field, level, format), args...)
-		l.wg.Done()
-	}()
+	_, _ = pp.Printf(fmt.Sprintf("[%s] %s: %s \n", l.field, level, format), args...)
 	return l
 }
 
@@ -49,11 +43,12 @@ func (l log) SetField(field string) LogImpl {
 	return l
 }
 
-func (l log) Cost() {
-	l.wg.Add(1)
-	go func() {
-		_, _ = pp.Printf(fmt.Sprintf("[%s] cost: %+v \n", l.field, time.Since(l.now)))
-		l.wg.Done()
-	}()
-	l.wg.Wait()
+func (l log) Cost() LogImpl {
+	_, _ = pp.Printf(fmt.Sprintf("[%s] cost: %+v \n", l.field, time.Since(l.now)))
+	return l.ReSetTimer()
+}
+
+func (l log) ReSetTimer() LogImpl {
+	l.now = time.Now()
+	return l
 }

@@ -4,46 +4,106 @@ import (
 	"bytes"
 	"candy_db/common/util"
 	"sort"
+	"unsafe"
 )
 
+// 可自定义数据编码方式
+type ctrInterface interface {
+	setByteData([]byte)
+	encode() []byte
+	encodeSize() uint32
+}
+
 type nodeArena struct {
-	keyOffset   uint32
-	keySize     uint32
+	impl        *arena
 	valueOffset uint32
 	valueSize   uint32
 }
 
-func (n *nodeArena) setKey(offset uint32, size uint32) {
-	n.keyOffset = offset
-	n.keySize = size
+func (n *nodeArena) putVal(ctr ctrInterface) {
+	n.valueOffset, n.valueSize = n.impl.CopyBy(func() []byte { return ctr.encode() })
 }
 
-func (n *nodeArena) setVal(offset uint32, size uint32) {
-	n.valueOffset = offset
-	n.valueSize = size
+func (n *nodeArena) pickVal(ctr ctrInterface) {
+	n.impl.GetBy(n.valueOffset, n.valueSize, func(buf []byte) {
+		ctr.setByteData(buf)
+	})
 }
 
-type node struct {
-	key   []byte
-	score float64
-	data  interface{}
-	nodeArena
+// Container 数据出入的容器
+type Container struct {
+	key       []byte
+	data      []byte
+	expiresAT uint64
 }
 
-func NewNode(key []byte) *node {
-	return &node{
-		key:   key,
-		score: util.Hash().simpleFnv(key),
+func NewContainer(key []byte, data []byte) *Container {
+	return &Container{
+		key:  key,
+		data: data,
 	}
 }
 
-func (n *node) ToUse(a *arena) {
-
+func (d *Container) GetData() []byte {
+	return d.data
 }
 
-func (n *node) SetData(value interface{}) *node {
-	n.data = value
+// 数据实体的编码方式
+func (d *Container) encode() (ret []byte) {
+	return d.data
+}
+
+// 数据实体的编码大小
+func (d *Container) encodeSize() uint32 {
+	dataSize := int(unsafe.Sizeof(d.data))
+	expiresSize := 0
+	for {
+		expiresSize++
+		d.expiresAT >>= 7
+		if d.expiresAT == 0 {
+			break
+		}
+	}
+	return uint32(dataSize + expiresSize)
+}
+
+// 数据实体的保存
+func (d *Container) setByteData(buf []byte) {
+	d.data = buf
+}
+
+type byteKey []byte
+
+func (b byteKey) encodeSize() uint32 {
+	return uint32(len(b))
+}
+
+type node struct {
+	score     float64
+	key       []byte
+	expiresAT uint64
+	nodeArena
+}
+
+func newNode(impl *arena) *node {
+	return &node{nodeArena: nodeArena{impl: impl}}
+}
+
+func (n *node) identity(key byteKey) *node {
+	n.key = key
+	n.score = util.Hash().SimpleFnv(key)
 	return n
+}
+
+func (n *node) Dump(value *Container) *node {
+	n.identity(value.key)
+	n.expiresAT = value.expiresAT
+	n.nodeArena.putVal(value)
+	return n
+}
+
+func (n *node) Replay(data *Container) {
+	n.nodeArena.pickVal(data)
 }
 
 type compareType int

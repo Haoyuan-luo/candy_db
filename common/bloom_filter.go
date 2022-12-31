@@ -39,20 +39,19 @@ func (bf *BloomFilter) GetBloomArray(key ...[]byte) []int {
 	preKeyRatio := bf.preKeyRatio()
 	hashNum := bf.calcHshNum(preKeyRatio)
 	nBits := len(key) * int(preKeyRatio)
-	tFnv := util.Hash().times(hashNum)
-	filter := make([]int, nBits)
-	producer := util.Producer[[]byte](done, key)
-	processor := util.Processor[[]byte, []float64](done, producer, tFnv.simpleFnv, nil)
-	consumer := util.Consumer[[]float64](done, processor)
-	setPoint := func(point []float64) struct{} {
+	tFnv := util.Hash().Times(hashNum)
+	setPoint := func(point []float64) []int {
+		filter := make([]int, nBits)
 		for i := range point {
 			filter[int(point[i])%nBits] = 1
 		}
-		return struct{}{}
+		return filter
 	}
-	p := <-consumer
-	producerV2 := util.Producer[[]float64](done, [][]float64{p})
-	processorV2 := util.Processor[[]float64, struct{}](done, producerV2, setPoint, nil)
-	_ = util.Consumer[struct{}](done, processorV2)
-	return filter
+	ret := make([]int, len(key))
+	for r := range util.MapChan(util.Map(key, tFnv.SimpleFnv), setPoint) {
+		for i, _ := range ret {
+			ret[i] = ret[i] | r[i]
+		}
+	}
+	return ret
 }
