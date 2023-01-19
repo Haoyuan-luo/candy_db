@@ -2,19 +2,6 @@ package util
 
 const fanNum = 3
 
-//const (
-//	defaultScene string = "default"
-//	filterScene  string = "filter"
-//)
-//
-//func filter[T, R any](f func(T) R, in <-chan T, out chan<- R) {
-//	for v := range in {
-//		out <- f(v)
-//	}
-//}
-//
-//type sceneMap[T, R any] map[string]sceneType[any, any]
-
 type Iterator[T, R any] struct {
 	done   chan struct{}
 	stream <-chan T

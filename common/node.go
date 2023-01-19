@@ -79,7 +79,7 @@ func (b byteKey) encodeSize() uint32 {
 }
 
 type node struct {
-	score     float64
+	score     uint64
 	key       []byte
 	expiresAT uint64
 	nodeArena
@@ -91,7 +91,7 @@ func newNode(impl *arena) *node {
 
 func (n *node) identity(key byteKey) *node {
 	n.key = key
-	n.score = util.Hash().SimpleFnv(key)
+	n.score = util.Hash().CalcHash(key)
 	return n
 }
 

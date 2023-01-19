@@ -3,8 +3,9 @@ package util
 const offset32 fnv = 2166136261
 const prime32 fnv = 16777619
 
-type fnv uint32
+type fnv uint64
 
+// 一个计算多次的Fnv工具
 type timesFnv struct {
 	fnv
 	times uint32
@@ -12,7 +13,7 @@ type timesFnv struct {
 
 type HashImpl interface {
 	Times(n uint32) timesFnv
-	SimpleFnv(key []byte) float64
+	CalcHash(key []byte) uint64
 }
 
 func Hash() HashImpl {
@@ -20,7 +21,7 @@ func Hash() HashImpl {
 	return &s
 }
 
-func (s *fnv) SimpleFnv(key []byte) float64 {
+func (s *fnv) CalcHash(key []byte) uint64 {
 	sampled := make([][]byte, 0, 3)
 	total := len(key) - 1
 	step := total / 5
@@ -32,17 +33,17 @@ func (s *fnv) SimpleFnv(key []byte) float64 {
 			hash ^= fnv(b)
 		}
 	}
-	return float64(hash)
+	return uint64(hash)
 }
 
 func (s *fnv) Times(n uint32) timesFnv {
 	return timesFnv{*s, n}
 }
 
-func (s *timesFnv) SimpleFnv(key []byte) []float64 {
-	hash := make([]float64, s.times)
+func (s *timesFnv) CalcHash(key []byte) []uint64 {
+	hash := make([]uint64, s.times)
 	for i := uint32(0); i < s.times; i++ {
-		hash[i] = s.fnv.SimpleFnv(append(key, byte(i)))
+		hash[i] = s.fnv.CalcHash(append(key, byte(i)))
 	}
 	return hash
 }

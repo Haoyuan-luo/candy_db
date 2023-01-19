@@ -40,7 +40,7 @@ func (bf *BloomFilter) GetBloomArray(key ...[]byte) []int {
 	hashNum := bf.calcHshNum(preKeyRatio)
 	nBits := len(key) * int(preKeyRatio)
 	tFnv := util.Hash().Times(hashNum)
-	setPoint := func(point []float64) []int {
+	setPoint := func(point []uint64) []int {
 		filter := make([]int, nBits)
 		for i := range point {
 			filter[int(point[i])%nBits] = 1
@@ -48,7 +48,7 @@ func (bf *BloomFilter) GetBloomArray(key ...[]byte) []int {
 		return filter
 	}
 	ret := make([]int, len(key))
-	for r := range util.MapChan(util.Map(key, tFnv.SimpleFnv), setPoint) {
+	for r := range util.MapChan(util.Map(key, tFnv.CalcHash), setPoint) {
 		for i, _ := range ret {
 			ret[i] = ret[i] | r[i]
 		}
