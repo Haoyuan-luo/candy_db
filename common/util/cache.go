@@ -1,10 +1,10 @@
 package util
 
 const (
-	Lru           = "lru"
-	Lfu           = "lfu"
-	TinyLfu       = "tiny-lfu"
-	WindowTinyLfu = "window-tiny-lfu"
+	Lru = "lru"
+	Lfu = "lfu"
+	//TinyLfu       = "tiny-lfu"
+	//WindowTinyLfu = "window-tiny-lfu"
 )
 
 type CacheService interface {
@@ -101,29 +101,29 @@ func (cl capl) set(key string) {
 // 一条缓存数据的访问次数真的需要int类型这么大的表示范围来统计吗？
 // 一个缓存被访问15次已经算是很高的频率了，那么只用4个Bit就可以保存这个数据
 // 也就是四个bit 2^4=16 = 0000~1111 正好是半个uint8的长度，那一个uint8就可以储存两个位图
-type cmkRow []byte // 位图（计数基本单位）
-
-func newCmkRow(numContainer int64) cmkRow {
-	return make(cmkRow, numContainer/2) // 除2是因为一个uint8可以存储两个位图
-}
-
-func (cm cmkRow) increment(n uint64) {
-	//定位到第i个Counter
-	i := n / 2 //r[i]
-	//右移距离，偶数为0，奇数为4
-	s := (n & 1) * 4
-	//取前4Bit还是后4Bit
-	v := (cm[i] >> s) & 0x0f //0000, 1111
-	//没有超出最大计数时，计数+1
-	if v < 15 { // 一个8bit最多表示15次
-		cm[i] += uint8(1)
-		cm[i] <<= s
-	}
-}
-
-func (cm cmkRow) get(n uint64) byte {
-	return byte(cm[n/2]>>((n&1)*4)) & 0x0f
-}
+//type cmkRow []byte // 位图（计数基本单位）
+//
+//func newCmkRow(numContainer int64) cmkRow {
+//	return make(cmkRow, numContainer/2) // 除2是因为一个uint8可以存储两个位图
+//}
+//
+//func (cm cmkRow) increment(n uint64) {
+//	//定位到第i个Counter
+//	i := n / 2 //r[i]
+//	//右移距离，偶数为0，奇数为4
+//	s := (n & 1) * 4
+//	//取前4Bit还是后4Bit
+//	v := (cm[i] >> s) & 0x0f //0000, 1111
+//	//没有超出最大计数时，计数+1
+//	if v < 15 { // 一个8bit最多表示15次
+//		cm[i] += uint8(1)
+//		cm[i] <<= s
+//	}
+//}
+//
+//func (cm cmkRow) get(n uint64) byte {
+//	return byte(cm[n/2]>>((n&1)*4)) & 0x0f
+//}
 
 // 各种cache的实现
 
@@ -185,40 +185,38 @@ func (l lfuCache) Set(key string, value []byte) {
 	}
 }
 
-type tinyLfuCache struct {
-	container map[string][]byte
-	capl      capl
-}
-
-func (t tinyLfuCache) Get(key string) ([]byte, bool) {
-	value, ok := t.container[key]
-	if ok {
-		t.capl.rotateWithH(t.capl.getPosWithH(key))
-	}
-	return value, ok
-}
-
-func (t tinyLfuCache) Set(key string, value []byte) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type windowTinyLfuCache struct {
-	container map[string][]byte
-	capl      capl
-}
-
-func (w windowTinyLfuCache) Get(key string) ([]byte, bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (w windowTinyLfuCache) Set(key string, value []byte) {
-	//TODO implement me
-	panic("implement me")
-}
-
-// 流式计数方式
+//type tinyLfuCache struct {
+//	container map[string][]byte
+//	capl      capl
+//}
+//
+//func (t tinyLfuCache) Get(key string) ([]byte, bool) {
+//	value, ok := t.container[key]
+//	if ok {
+//		t.capl.rotateWithH(t.capl.getPosWithH(key))
+//	}
+//	return value, ok
+//}
+//
+//func (t tinyLfuCache) Set(key string, value []byte) {
+//	//TODO implement me
+//	panic("implement me")
+//}
+//
+//type windowTinyLfuCache struct {
+//	container map[string][]byte
+//	capl      capl
+//}
+//
+//func (w windowTinyLfuCache) Get(key string) ([]byte, bool) {
+//	//TODO implement me
+//	panic("implement me")
+//}
+//
+//func (w windowTinyLfuCache) Set(key string, value []byte) {
+//	//TODO implement me
+//	panic("implement me")
+//}
 
 func NewCacheService(cacheType string) CacheService {
 	switch cacheType {
@@ -232,16 +230,16 @@ func NewCacheService(cacheType string) CacheService {
 			container: make(map[string][]byte),
 			capl:      make([]*capacity, 5),
 		}
-	case TinyLfu:
-		return &tinyLfuCache{
-			container: make(map[string][]byte),
-			capl:      make([]*capacity, 5),
-		}
-	case WindowTinyLfu:
-		return &windowTinyLfuCache{
-			container: make(map[string][]byte),
-			capl:      make([]*capacity, 5),
-		}
+		//case TinyLfu:
+		//	return &tinyLfuCache{
+		//		container: make(map[string][]byte),
+		//		capl:      make([]*capacity, 5),
+		//	}
+		//case WindowTinyLfu:
+		//	return &windowTinyLfuCache{
+		//		container: make(map[string][]byte),
+		//		capl:      make([]*capacity, 5),
+		//	}
 	}
 	return nil
 }
