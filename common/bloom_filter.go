@@ -10,16 +10,17 @@ type BloomFilter struct {
 	account   int
 }
 
-func NewBloomFilter() *BloomFilter {
-	return &BloomFilter{
-		tolerance: Tolerance,
-		account:   0,
-	}
+type BloomService interface {
+	GetBloomArray(key ...[]byte) []int
+}
+
+func NewBloomFilter() BloomService {
+	return &BloomFilter{tolerance: Tolerance, account: 0}
 }
 
 func (bf *BloomFilter) preKeyRatio() float64 {
 	size := -1 * float64(bf.account) * math.Log(bf.tolerance) / math.Pow(math.Log(2), 2)
-	return float64(math.Ceil(size / float64(bf.account)))
+	return math.Ceil(size / float64(bf.account))
 }
 
 func (bf *BloomFilter) calcHshNum(ratio float64) uint32 {
@@ -48,7 +49,7 @@ func (bf *BloomFilter) GetBloomArray(key ...[]byte) []int {
 		return filter
 	}
 	ret := make([]int, len(key))
-	for r := range util.MapChan(util.Map(key, tFnv.CalcHash), setPoint) {
+	for r := range util.Map(util.Map(key, tFnv.CalcHash).ToSlice(), setPoint) {
 		for i, _ := range ret {
 			ret[i] = ret[i] | r[i]
 		}

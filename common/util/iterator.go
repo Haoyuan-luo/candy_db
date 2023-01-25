@@ -2,73 +2,64 @@ package util
 
 const fanNum = 3
 
-type Iterator[T, R any] struct {
+type iterator[T, R any] struct {
 	done   chan struct{}
 	stream <-chan T
 	fan    []<-chan R
 }
 
-func (i Iterator[T, R]) GetStream() <-chan R {
+func (i iterator[T, R]) getStream() <-chan R {
 	return Consumer[R](i.done, i.fan...)
 }
 
-func FromSlice[T, R any](slice []T) Iterator[T, R] {
+func fromSlice[T, R any](slice []T) iterator[T, R] {
 	done := make(chan struct{})
-	return Iterator[T, R]{done, Producer[T](done, slice), make([]<-chan R, fanNum)}
+	return iterator[T, R]{done, Producer[T](done, slice), make([]<-chan R, fanNum)}
 }
 
-func FromSliceChan[T, R any](slice <-chan T) Iterator[T, R] {
-	done := make(chan struct{})
-	return Iterator[T, R]{done, ProducerChan[T](done, slice), make([]<-chan R, fanNum)}
-}
-
-func ForEach[T, R any](iter Iterator[T, R], fn func(T) R, scene func(chan R, T, func(T) R)) Iterator[T, R] {
+func forEach[T, R any](iter iterator[T, R], fn func(T) R, scene func(chan R, T, func(T) R)) iterator[T, R] {
 	for i := 0; i < fanNum; i++ {
 		iter.fan[i] = Processor[T, R](iter.done, iter.stream, fn, scene)
 	}
 	return iter
 }
 
-func Serial[T, R any](s []T, sc <-chan T, fn func(T) R, scene func(chan R, T, func(T) R), isChan bool) <-chan R {
-	if isChan {
-		return ForEach[T, R](FromSliceChan[T, R](sc), fn, scene).GetStream()
-	}
-	return ForEach[T, R](FromSlice[T, R](s), fn, scene).GetStream()
+func work[T, R any](s []T, fn func(T) R, scene func(chan R, T, func(T) R)) <-chan R {
+	return forEach[T, R](fromSlice[T, R](s), fn, scene).getStream()
 }
 
-func Map[T, R any](s []T, fn func(T) R) <-chan R {
+type IterRet[T any] <-chan T
+
+// Range 迭代
+func (i IterRet[T]) Range() <-chan T {
+	return i
+}
+
+// ToSlice 转换为切片
+func (i IterRet[T]) ToSlice() (ret []T) {
+	for v := range i {
+		ret = append(ret, v)
+	}
+	return
+}
+
+func Map[T, R any](s []T, fn func(T) R) IterRet[R] {
 	scene := func(fan chan R, v T, fn func(T) R) {
 		fan <- fn(v)
 	}
-	return Serial(s, nil, fn, scene, false)
+	return work(s, fn, scene)
 }
 
-func MapChan[T, R any](s <-chan T, fn func(T) R) <-chan R {
-	scene := func(fan chan R, v T, fn func(T) R) {
-		fan <- fn(v)
-	}
-	return Serial(nil, s, fn, scene, true)
-}
-
-type judge[R any] interface {
+type judge[T any] interface {
 	IsTrue() bool
-	Value() R
+	Value() T
 }
 
-func Filter[R any, T judge[R]](s []T) <-chan R {
-	scene := func(fan chan R, v T, fn func(T) R) {
+func Filter[T any, R judge[T]](s []R) IterRet[T] {
+	scene := func(fan chan T, v R, fn func(R) T) {
 		if v.IsTrue() {
 			fan <- v.Value()
 		}
 	}
-	return Serial(s, nil, nil, scene, false)
-}
-
-func FilterChan[R any, T judge[R]](s <-chan T) <-chan R {
-	scene := func(fan chan R, v T, fn func(T) R) {
-		if v.IsTrue() {
-			fan <- v.Value()
-		}
-	}
-	return Serial(nil, s, nil, scene, true)
+	return work(s, nil, scene)
 }

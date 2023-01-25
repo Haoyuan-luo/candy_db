@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -16,7 +15,7 @@ func TestNewCacheService(t *testing.T) {
 		{
 			name: "TestNewCacheService",
 			args: args{
-				cacheType: Lfu,
+				cacheType: LFU,
 			},
 		},
 	}
@@ -48,33 +47,5 @@ func TestNewCacheService(t *testing.T) {
 		cache.Get("key9")
 		cache.Set("key10", []byte("value"))
 		cache.Get("key10")
-	}
-}
-
-func Test_newCmkRow(t *testing.T) {
-	type args struct {
-		numContainer int64
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Test_newCmkRow",
-			args: args{
-				numContainer: 2,
-			},
-		},
-	}
-	h := Hash()
-	k64 := h.CalcHash([]byte("key"))
-
-	for _, tt := range tests {
-		r := newCmkRow(tt.args.numContainer)
-		r.increment(uint64(k64 % uint64(tt.args.numContainer)))
-		r.increment(uint64(k64 % uint64(tt.args.numContainer)))
-		r.increment(uint64(k64 % uint64(tt.args.numContainer)))
-		x := int64(r.get(uint64(k64 % uint64(tt.args.numContainer))))
-		fmt.Println(x)
 	}
 }

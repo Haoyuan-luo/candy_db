@@ -27,14 +27,26 @@ func Logger() LogImpl {
 }
 
 type LogImpl interface {
-	Log(level level, format string, args ...interface{}) LogImpl
+	Info(format string, args ...interface{}) LogImpl
+	Warn(format string, args ...interface{}) LogImpl
+	Error(format string, args ...interface{}) LogImpl
 	SetField(field string) LogImpl
 	Cost() LogImpl
 	ReSetTimer() LogImpl
 }
 
-func (l log) Log(level level, format string, args ...interface{}) LogImpl {
-	_, _ = pp.Printf(fmt.Sprintf("[%s] %s: %s \n", l.field, level, format), args...)
+func (l log) Info(format string, args ...interface{}) LogImpl {
+	_, _ = pp.Printf(fmt.Sprintf("[%s] %s: %s %v \n", l.field, INFO, format, args))
+	return l
+}
+
+func (l log) Warn(format string, args ...interface{}) LogImpl {
+	_, _ = pp.Printf(fmt.Sprintf("[%s] %s: %s %v \n", l.field, WARN, format, args))
+	return l
+}
+
+func (l log) Error(format string, args ...interface{}) LogImpl {
+	_, _ = pp.Printf(fmt.Sprintf("[%s] %s: %s %v \n", l.field, ERROR, format, args))
 	return l
 }
 

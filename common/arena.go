@@ -31,7 +31,7 @@ func (a *arena) allocate(sz uint32) uint32 {
 		}
 		newBuf := make([]byte, len(a.buf)+int(growBy))
 		if !util.GenEqual(len(a.buf), copy(newBuf, a.buf)) {
-			a.log.Log(util.ERROR, "arena allocate failed")
+			a.log.Error("arena allocate failed")
 		}
 		a.buf = newBuf
 	}
@@ -44,7 +44,7 @@ func (a *arena) CopyBy(fn func() []byte) (startPoint, size uint32) {
 	size = uint32(len(src))
 	offset := a.allocate(size)
 	if !util.GenEqual(len(src), copy(a.buf[offset:], src)) {
-		a.log.Log(util.ERROR, "arena copy failed")
+		a.log.Error("arena copy failed")
 	}
 	offset += uint32(len(src))
 	a.pos = offset

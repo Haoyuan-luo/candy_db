@@ -7,28 +7,26 @@ import (
 )
 
 type SkipList struct {
-	header *Element
+	cobweb *Element
 	arena  *arena
 	mutex  sync.RWMutex
 	update []*Element
 	max    int
 	skip   int
 	level  int
-	length int32
 }
 
-type SkipListImpl interface {
-	AddNode(nodes ...*Container)
-	FindNode(container ...*Container)
+type skipListImpl interface {
+	AddNode(c ...*Container)
+	FindNode(c ...*Container)
 }
 
-func NewSkipList(skip ...int) SkipListImpl {
-	list := &SkipList{header: NewElement(nil, MaxLevel)}
+func newSkipList(skip ...int) skipListImpl {
+	list := &SkipList{cobweb: NewElement(nil, MaxLevel)}
 	list.arena = NewArena()
 	list.max = MaxLevel
 	list.skip = 4
 	list.level = 0
-	list.length = 0
 	list.update = make([]*Element, list.max)
 	if len(skip) == 1 && skip[0] > 1 {
 		list.skip = skip[0]
@@ -38,7 +36,7 @@ func NewSkipList(skip ...int) SkipListImpl {
 
 func (list *SkipList) AddNode(container ...*Container) {
 	for i := range container {
-		list.add(newNode(list.arena).Dump(container[i]))
+		list.add(newNode(list.arena).dump(container[i]))
 	}
 }
 
@@ -49,7 +47,7 @@ func (list *SkipList) FindNode(container ...*Container) {
 
 	for i := 0; i < len(container); i++ {
 		if n := <-nodes; n != nil {
-			n.Replay(container[i])
+			n.replay(container[i])
 		}
 	}
 	return
@@ -60,17 +58,17 @@ func (list *SkipList) find(container *Container) *node {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 
-	var prev = list.header
+	var prev = list.cobweb
 	var next *Element
 	for i := list.level - 1; i >= 0; i-- {
 		next = prev.Level[i]
-		for next != nil && next.Data.CompareWith(tarNode, Less) {
+		for next != nil && next.Data.compareWith(tarNode, Less) {
 			prev = next
 			next = prev.Level[i]
 		}
 	}
 
-	if next != nil && next.Data.CompareWith(tarNode, Equal) {
+	if next != nil && next.Data.compareWith(tarNode, Equal) {
 		return next.Data
 	} else {
 		return nil
@@ -81,11 +79,11 @@ func (list *SkipList) add(tarNode *node) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	//获取每层的前驱节点=>list.update
-	var prev = list.header
+	var prev = list.cobweb
 	var next *Element
 	for i := list.level - 1; i >= 0; i-- {
 		next = prev.Level[i]
-		for next != nil && next.Data.CompareWith(tarNode, Less) {
+		for next != nil && next.Data.compareWith(tarNode, Less) {
 			prev = next
 			next = prev.Level[i]
 		}
@@ -93,7 +91,7 @@ func (list *SkipList) add(tarNode *node) {
 	}
 
 	//如果key已经存在
-	if next != nil && next.Data.CompareWith(tarNode, Equal) {
+	if next != nil && next.Data.compareWith(tarNode, Equal) {
 		next.Data = tarNode
 		return
 	}
@@ -103,7 +101,7 @@ func (list *SkipList) add(tarNode *node) {
 	if level > list.level {
 		level = list.level + 1
 		list.level = level
-		list.update[list.level-1] = list.header
+		list.update[list.level-1] = list.cobweb
 	}
 
 	//申请新的结点
@@ -114,7 +112,6 @@ func (list *SkipList) add(tarNode *node) {
 		ele.Level[i] = list.update[i].Level[i]
 		list.update[i].Level[i] = ele
 	}
-	list.length++
 }
 
 func (list *SkipList) randomLevel() int {

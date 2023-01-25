@@ -2,7 +2,10 @@ package util
 
 import "sync"
 
+// 场景函数
 type sceneType[T, R any] func(chan R, T, func(T) R)
+
+// 工作函数
 type fanType[T, R any] func(T) R
 
 func Producer[T any](done <-chan struct{}, stream []T) <-chan T {
@@ -10,21 +13,6 @@ func Producer[T any](done <-chan struct{}, stream []T) <-chan T {
 	go func() {
 		defer close(fan)
 		for _, k := range stream {
-			select {
-			case fan <- k:
-			case <-done:
-				return
-			}
-		}
-	}()
-	return fan
-}
-
-func ProducerChan[T any](done <-chan struct{}, stream <-chan T) <-chan T {
-	fan := make(chan T)
-	go func() {
-		defer close(fan)
-		for k := range stream {
 			select {
 			case fan <- k:
 			case <-done:

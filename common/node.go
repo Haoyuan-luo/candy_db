@@ -3,14 +3,13 @@ package common
 import (
 	"bytes"
 	"candy_db/common/util"
-	"sort"
 	"unsafe"
 )
 
 // 可自定义数据编码方式
 type ctrInterface interface {
 	setByteData([]byte)
-	encode() []byte
+	GetData() []byte
 	encodeSize() uint32
 }
 
@@ -21,7 +20,7 @@ type nodeArena struct {
 }
 
 func (n *nodeArena) putVal(ctr ctrInterface) {
-	n.valueOffset, n.valueSize = n.impl.CopyBy(func() []byte { return ctr.encode() })
+	n.valueOffset, n.valueSize = n.impl.CopyBy(func() []byte { return ctr.GetData() })
 }
 
 func (n *nodeArena) pickVal(ctr ctrInterface) {
@@ -45,11 +44,6 @@ func NewContainer(key []byte, data []byte) *Container {
 }
 
 func (d *Container) GetData() []byte {
-	return d.data
-}
-
-// 数据实体的编码方式
-func (d *Container) encode() (ret []byte) {
 	return d.data
 }
 
@@ -95,15 +89,15 @@ func (n *node) identity(key byteKey) *node {
 	return n
 }
 
-func (n *node) Dump(value *Container) *node {
-	n.identity(value.key)
-	n.expiresAT = value.expiresAT
-	n.nodeArena.putVal(value)
+func (n *node) dump(c *Container) *node {
+	n.identity(c.key)
+	n.expiresAT = c.expiresAT
+	n.nodeArena.putVal(c)
 	return n
 }
 
-func (n *node) Replay(data *Container) {
-	n.nodeArena.pickVal(data)
+func (n *node) replay(c *Container) {
+	n.nodeArena.pickVal(c)
 }
 
 type compareType int
@@ -114,7 +108,7 @@ const (
 	Less  compareType = -1
 )
 
-func (n *node) CompareWith(tar *node, want compareType) bool {
+func (n *node) compareWith(tar *node, want compareType) bool {
 	if n.score == tar.score {
 		return bytes.Compare(n.key, tar.key) == int(want)
 	}
@@ -122,29 +116,4 @@ func (n *node) CompareWith(tar *node, want compareType) bool {
 		return want == More
 	}
 	return want == Less
-}
-
-type sortTable struct {
-	nodes []*node
-	less  func(i, j *node) bool
-}
-
-func (s sortTable) Len() int {
-	return len(s.nodes)
-}
-
-func (s sortTable) Less(i, j int) bool {
-	return s.less(s.nodes[i], s.nodes[j])
-}
-
-func (s sortTable) Swap(i, j int) {
-	tmp := s.nodes[i]
-	s.nodes[i] = s.nodes[j]
-	s.nodes[j] = tmp
-}
-
-type NodeList []*node
-
-func (nl NodeList) SortBy(fn func(n1, n2 *node) bool) {
-	sort.Sort(&sortTable{nl, fn})
 }

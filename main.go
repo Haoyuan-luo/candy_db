@@ -2,37 +2,39 @@ package main
 
 import (
 	"candy_db/client"
-	"encoding/json"
+	"candy_db/common"
+	"candy_db/common/util"
+	"context"
 	"fmt"
 )
 
+func after(ctx context.Context, req client.CallReq) error {
+	fmt.Println("after")
+	return nil
+}
+
+func before(ctx context.Context, req client.CallReq) error {
+	fmt.Println("before")
+	return nil
+}
+
 func main() {
-
+	ctx := context.Background()
 	// test i64
-	db := client.NewCandyDBClient[int64]()
-	key, _ := json.Marshal("key")
-	db.Add(key, int64(1))
-	ret := db.Find(key)
-	fmt.Println(ret.Assert())
-
-	// test string
-	db2 := client.NewCandyDBClient[string]()
-	db2.Add(key, "test candy db")
-	ret2 := db2.Find(key)
-	fmt.Println(ret2.Assert())
-
-	// test struct
-	type Test struct {
-		name string
-		age  int
+	db, err := client.NewCandyDBClient[string, int64](
+		client.WithBeforeCall[string, int64](before),
+		client.WithAfterCall[string, int64](after),
+		client.WithMemTable[string, int64](
+			common.CustomCache[string](util.NewCacheService[string](util.LFU)),
+		),
+	)
+	if err != nil {
+		panic(err)
 	}
-
-	db3 := client.NewCandyDBClient[Test]()
-	db3.Add(key, Test{
-		name: "test db",
-		age:  123,
-	})
-	ret3 := db3.Find(key)
-	fmt.Println(ret3.Assert())
-
+	err = db.Add(ctx, "key", int64(123))
+	if err != nil {
+		panic(err)
+	}
+	ret, err := db.Find(ctx, "key")
+	fmt.Println(ret.Value)
 }

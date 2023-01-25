@@ -1,34 +1,34 @@
 package util
 
 const (
-	Lru = "lru"
-	Lfu = "lfu"
+	LRU = "lru"
+	LFU = "lfu"
 	//TinyLfu       = "tiny-lfu"
 	//WindowTinyLfu = "window-tiny-lfu"
 )
 
-type CacheService interface {
-	Get(key string) ([]byte, bool)
-	Set(key string, value []byte)
+type CacheService[T comparable] interface {
+	Get(key T) ([]byte, bool)
+	Set(key T, value []byte)
 }
 
 // cache工具类
-type capacity struct {
-	key  string
+type capacity[T comparable] struct {
+	key  T
 	numH int // 命中次数
 }
 
-type capl []*capacity
+type capl[T comparable] []*capacity[T]
 
-func (cl capl) cap() int {
+func (cl capl[T]) cap() int {
 	return cap(cl)
 }
 
-func (cl capl) head() *capacity {
+func (cl capl[T]) head() *capacity[T] {
 	return cl[0]
 }
 
-func (cl capl) tail() (ret *capacity) {
+func (cl capl[T]) tail() (ret *capacity[T]) {
 	for i := len(cl) - 1; i >= 0; i-- {
 		if cl[i] != nil {
 			ret = cl[i]
@@ -39,7 +39,7 @@ func (cl capl) tail() (ret *capacity) {
 	return nil
 }
 
-func (cl capl) get(key string) *capacity {
+func (cl capl[T]) get(key T) *capacity[T] {
 	for _, c := range cl {
 		if c != nil && c.key == key {
 			return c
@@ -48,7 +48,7 @@ func (cl capl) get(key string) *capacity {
 	return nil
 }
 
-func (cl capl) getPos(key string) int {
+func (cl capl[T]) getPos(key T) int {
 	for i, c := range cl {
 		if c != nil && c.key == key {
 			return i
@@ -57,7 +57,7 @@ func (cl capl) getPos(key string) int {
 	return -1
 }
 
-func (cl capl) getPosWithH(key string) int {
+func (cl capl[T]) getPosWithH(key T) int {
 	for i, c := range cl {
 		if c != nil && c.key == key {
 			cl[i].numH++
@@ -67,17 +67,17 @@ func (cl capl) getPosWithH(key string) int {
 	return -1
 }
 
-func (cl capl) swap(i, j int) {
+func (cl capl[T]) swap(i, j int) {
 	cl[i], cl[j] = cl[j], cl[i]
 }
 
-func (cl capl) rotate(i int) {
+func (cl capl[T]) rotate(i int) {
 	for j := i; j > 0; j-- {
 		cl.swap(j, j-1)
 	}
 }
 
-func (cl capl) rotateWithH(i int) {
+func (cl capl[T]) rotateWithH(i int) {
 	for j := i; j > 0; j-- {
 		if cl[j].numH >= cl[j-1].numH {
 			cl.swap(j, j-1)
@@ -87,14 +87,14 @@ func (cl capl) rotateWithH(i int) {
 	}
 }
 
-func (cl capl) set(key string) {
+func (cl capl[T]) set(key T) {
 	for i := 0; i < len(cl); i++ {
 		if cl[i] == nil {
-			cl[i] = &capacity{key: key, numH: 0}
+			cl[i] = &capacity[T]{key: key, numH: 0}
 			return
 		}
 	}
-	cl[len(cl)-1] = &capacity{key: key, numH: 0}
+	cl[len(cl)-1] = &capacity[T]{key: key, numH: 0}
 }
 
 // 流式计数方式
@@ -127,12 +127,12 @@ func (cl capl) set(key string) {
 
 // 各种cache的实现
 
-type lruCache struct {
-	container map[string][]byte
-	capl      capl
+type lruCache[T comparable] struct {
+	container map[T][]byte
+	capl      capl[T]
 }
 
-func (l lruCache) Get(key string) ([]byte, bool) {
+func (l lruCache[T]) Get(key T) ([]byte, bool) {
 	value, ok := l.container[key]
 	if ok {
 		l.capl.rotate(l.capl.getPos(key))
@@ -140,7 +140,7 @@ func (l lruCache) Get(key string) ([]byte, bool) {
 	return value, ok
 }
 
-func (l lruCache) Set(key string, value []byte) {
+func (l lruCache[T]) Set(key T, value []byte) {
 	if _, ok := l.container[key]; ok { // 如果存在，更新
 		l.container[key] = value
 		return
@@ -156,12 +156,12 @@ func (l lruCache) Set(key string, value []byte) {
 	}
 }
 
-type lfuCache struct {
-	container map[string][]byte
-	capl      capl
+type lfuCache[T comparable] struct {
+	container map[T][]byte
+	capl      capl[T]
 }
 
-func (l lfuCache) Get(key string) ([]byte, bool) {
+func (l lfuCache[T]) Get(key T) ([]byte, bool) {
 	value, ok := l.container[key]
 	if ok {
 		l.capl.rotateWithH(l.capl.getPosWithH(key))
@@ -169,7 +169,7 @@ func (l lfuCache) Get(key string) ([]byte, bool) {
 	return value, ok
 }
 
-func (l lfuCache) Set(key string, value []byte) {
+func (l lfuCache[T]) Set(key T, value []byte) {
 	if _, ok := l.container[key]; ok { // 如果存在，更新
 		l.container[key] = value
 		return
@@ -218,17 +218,17 @@ func (l lfuCache) Set(key string, value []byte) {
 //	panic("implement me")
 //}
 
-func NewCacheService(cacheType string) CacheService {
+func NewCacheService[T comparable](cacheType string) CacheService[T] {
 	switch cacheType {
-	case Lru:
-		return &lruCache{
-			container: make(map[string][]byte),
-			capl:      make([]*capacity, 5),
+	case LRU:
+		return &lruCache[T]{
+			container: make(map[T][]byte),
+			capl:      make([]*capacity[T], 5),
 		}
-	case Lfu:
-		return &lfuCache{
-			container: make(map[string][]byte),
-			capl:      make([]*capacity, 5),
+	case LFU:
+		return &lfuCache[T]{
+			container: make(map[T][]byte),
+			capl:      make([]*capacity[T], 5),
 		}
 		//case TinyLfu:
 		//	return &tinyLfuCache{
